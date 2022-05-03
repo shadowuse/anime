@@ -1,6 +1,7 @@
 {
   "name": "animejs",
-  "version": "3.2.1",
+  "version": "3.2.2",
+  "type": "module",
   "homepage": "http://animejs.com",
   "repository": "juliangarnier/anime",
   "description": "JavaScript animation engine",
@@ -14,7 +15,7 @@
     "lib"
   ],
   "scripts": {
-    "build": "node build"
+    "build": "./build.js"
   },
   "bugs": {
     "url": "https://github.com/juliangarnier/anime/issues"
@@ -22,17 +23,16 @@
   "keywords": [
     "anime",
     "animation",
-    "javascript",
+    "JavaScript",
     "CSS",
     "transforms",
     "SVG",
     "canvas"
   ],
   "devDependencies": {
-    "gzip-size": "^4.1.0",
-    "pretty-bytes": "^4.0.2",
-    "rollup": "^0.53.2",
-    "rollup-plugin-buble": "^0.18.0",
-    "uglify-js": "^3.3.4"
+    "esbuild": "^0.14.38",
+    "esbuild-plugin-babel": "^0.2.3",
+    "@babel/preset-env": "^7.17.10",
+    "core-js": "^3.22.4"
   }
 }

@@ -1,69 +1,95 @@
-const fs = require('fs');
-const { rollup } = require('rollup');
-const { minify } = require('uglify-js');
-const pretty = require('pretty-bytes');
-const sizer = require('gzip-size');
-const pkg = require('./package');
+#!/usr/bin/env node
+import esbuild from 'esbuild';
+import babel from 'esbuild-plugin-babel';
 
-const umd = pkg['umd:main'];
 const date = new Date();
 
+const getLogInfo = () => {
+  const hours = (date.getHours() + '').padStart(2, '0');
+  const minutes = (date.getMinutes() + '').padStart(2, '0');
+  const seconds = (date.getSeconds() + '').padStart(2, '0');
+  return hours + ':' + minutes + ':' + seconds + ' • ' + process.env.npm_package_name + ' • ';
+}
+
+const onRebuildLog = (error, result, message) => {
+  if (error) {
+    console.error(getLogInfo() + message +' failed:', error);
+  } else {
+    console.log(getLogInfo()  + message +' succeeded');
+  }
+}
+
 const banner = `/*
- * anime.js v${ pkg.version }
+ * anime.js v${ process.env.npm_package_version }
  * (c) ${ date.getFullYear() } Julian Garnier
  * Released under the MIT license
  * animejs.com
  */
 `;
 
-console.info('Compiling... 😤');
+const babelConfig = {
+  filter: /.*/,
+  namespace: '',
+  config: {
+    presets: [
+      [
+        '@babel/preset-env',
+        {
+          useBuiltIns: 'entry',
+          corejs: 3,
+          modules: false,
+          targets: {
+            browsers: ['IE 11'],
+          },
+        }
+      ]
+    ]
+  }
+}
 
-rollup({
-  input: 'src/index.js',
-  plugins: [
-    require('rollup-plugin-buble')({
-      transforms: {
-        modules: false,
-        dangerousForOf: true
+const generateBuildOptions = (format, target, minify) => {
+  const fileNameFormat = format === 'iife' ? 'es5' : format;
+  const fileNameMinify = minify ? '.min' : '';
+  const plugins = target === 'es5' ? [babel(babelConfig)] : [];
+  const outfileName = `lib/anime.${fileNameFormat}${fileNameMinify}.js`;
+  return {
+    globalName: 'anime',
+    entryPoints: ['src/index.js'],
+    outfile: outfileName,
+    format: format,
+    minify: minify,
+    bundle: true,
+    banner: { js: banner },
+    target: [target],
+    plugins: plugins,
+    watch: {
+      onRebuild(error, result) {
+        return onRebuildLog(error, result, outfileName);
       },
-      targets: {
-        firefox: 32,
-        chrome: 24,
-        safari: 6,
-        opera: 15,
-        edge: 10,
-        ie: 10
-      }
-    })
-  ]
-}).then(bun => {
-  bun.write({
-    banner,
-    format: 'cjs',
-    file: pkg.main
-  });
+    },
+  }
+}
 
-  bun.write({
-    banner,
-    format: 'es',
-    file: pkg.module
-  });
+esbuild.build(generateBuildOptions('iife', 'es5', false)).then(result => {
+  console.log(getLogInfo() + 'Watching... iife es5');
+});
 
-  bun.write({
-    banner,
-    file: umd,
-    format: 'umd',
-    name: pkg['umd:name']
-  }).then(_ => {
-    const data = fs.readFileSync(umd, 'utf8');
+esbuild.build(generateBuildOptions('iife', 'es5', true)).then(result => {
+  console.log(getLogInfo() + 'Watching... iife es5 minified');
+});
 
-    // produce minified output
-    const { code } = minify(data);
-    fs.writeFileSync(umd, `${banner}\n${code}`); // with banner
+esbuild.build(generateBuildOptions('esm', 'esnext', false)).then(result => {
+  console.log(getLogInfo() + 'Watching... esm esnext');
+});
 
-    // output gzip size
-    const int = sizer.sync(code);
-    console.info('Compilation was a success! 👍');
-    console.info(`~> gzip size: ${ pretty(int) }`);
-  }).catch(console.error);
-}).catch(console.error);
+esbuild.build(generateBuildOptions('esm', 'esnext', true)).then(result => {
+  console.log(getLogInfo() + 'Watching... esm esnext minified');
+});
+
+esbuild.build(generateBuildOptions('cjs', 'esnext', false)).then(result => {
+  console.log(getLogInfo() + 'Watching... cjs esnext');
+});
+
+esbuild.build(generateBuildOptions('cjs', 'esnext', true)).then(result => {
+  console.log(getLogInfo() + 'Watching... cjs esnext minified');
+});
